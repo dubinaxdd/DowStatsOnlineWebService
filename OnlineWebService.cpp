@@ -417,8 +417,13 @@ void OnlineWebService::onClientDisconnectd()
     QWebSocket *disconnectedClient = qobject_cast<QWebSocket *>(sender());
 
     if (disconnectedClient) {
-        //m_onlineModsCounterMap["all_mods"]--;
-        m_onlineModsCounterMap[m_clientsMap[disconnectedClient].currentMod]--;
+        QString currentMod = m_clientsMap[disconnectedClient].currentMod;
+
+        m_onlineModsCounterMap[currentMod]--;
+
+        if (m_onlineModsCounterMap[currentMod] == 0)
+            m_onlineModsCounterMap.remove(currentMod);
+
         updateModsOnlineCountJson();
 
         m_clientsBySteamIdMap.remove(m_clientsMap[disconnectedClient].steamId);
