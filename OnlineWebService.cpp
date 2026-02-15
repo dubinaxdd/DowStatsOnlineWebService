@@ -69,12 +69,11 @@ void OnlineWebService::sendPingResponse(QWebSocket *clientSocket, QJsonObject *j
         if (!client.currentMod.isEmpty())
             m_onlineModsCounterMap[client.currentMod]--;
 
+        if (m_onlineModsCounterMap[client.currentMod] == 0)
+            m_onlineModsCounterMap.remove(client.currentMod);
+
         client.currentMod = jsonDataObject.value("current_mod").toString();
 
-       /* if (m_onlineModsCounterMap.contains("all_mods"))
-            m_onlineModsCounterMap["all_mods"]++;
-        else
-            m_onlineModsCounterMap.insert("all_mods", 1);*/
 
         if (m_onlineModsCounterMap.contains(client.currentMod))
             m_onlineModsCounterMap[client.currentMod]++;
