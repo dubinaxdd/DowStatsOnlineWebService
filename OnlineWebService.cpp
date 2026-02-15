@@ -288,8 +288,8 @@ void OnlineWebService::updateLastUniquePlayers()
 {
     QDateTime curentDate = QDateTime::currentDateTimeUtc();
 
-    //if (!(curentDate.time().hour() == 0 && curentDate.time().minute() == 0))
-    //    return;
+    if (!(curentDate.time().hour() == 0 && curentDate.time().minute() == 0))
+        return;
 
     for (auto it = m_lastDayPlayersOnlineMap.begin(); it != m_lastDayPlayersOnlineMap.end();)
     {
