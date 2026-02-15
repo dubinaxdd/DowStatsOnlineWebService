@@ -1,15 +1,18 @@
-{
+[
 	{
 		"tech_name": "dowde",
-		"ui_name": "Definitive Edition"
+		"ui_name": "Definitive Edition",
+		"order": 0
 	},
 	
 	{
 		"tech_name": "dxp2",
-		"ui_name": "Soulstorm"
+		"ui_name": "Soulstorm",
+		"order": 1
 	},
 	{
 		"tech_name": "dowstats_balance_mod",
-		"ui_name": "DoW Stats Balance Mod"
+		"ui_name": "DoW Stats Balance Mod",
+		"order": 2
 	}
-}
+]

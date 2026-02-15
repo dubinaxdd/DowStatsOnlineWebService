@@ -8,6 +8,7 @@
 
 OnlineWebService::OnlineWebService(QObject* parent)
     : QObject(parent)
+    , m_server(new QWebSocketServer("DowStatsOnlineService", QWebSocketServer::NonSecureMode, this))
 {
     loadModUiNames();
     loadLastUniquePlayers();
@@ -24,7 +25,7 @@ OnlineWebService::OnlineWebService(QObject* parent)
     m_lastUniquePlayersTimer.start();
 
     m_server->listen(QHostAddress::Any, 50790);
-    qDebug() << "Seervice started.";
+    qDebug() << "Service started.";
 }
 
 OnlineWebService::~OnlineWebService()
@@ -70,10 +71,10 @@ void OnlineWebService::sendPingResponse(QWebSocket *clientSocket, QJsonObject *j
 
         client.currentMod = jsonDataObject.value("current_mod").toString();
 
-        if (m_onlineModsCounterMap.contains("all_mods"))
+       /* if (m_onlineModsCounterMap.contains("all_mods"))
             m_onlineModsCounterMap["all_mods"]++;
         else
-            m_onlineModsCounterMap.insert("all_mods", 1);
+            m_onlineModsCounterMap.insert("all_mods", 1);*/
 
         if (m_onlineModsCounterMap.contains(client.currentMod))
             m_onlineModsCounterMap[client.currentMod]++;
@@ -85,6 +86,8 @@ void OnlineWebService::sendPingResponse(QWebSocket *clientSocket, QJsonObject *j
 
     if (client.isRanked != jsonDataObject.value("ranked_state").toBool())
         client.isRanked = jsonDataObject.value("ranked_state").toBool();
+
+    client.pingTime = 0;
 
     QJsonObject messageObject;
     messageObject.insert("op", PingResponse);
@@ -118,15 +121,22 @@ void OnlineWebService::sendPlyersRankedStateResponse(QWebSocket *clientSocket, Q
 
     for(const auto &item : std::as_const(playersJsonArray))
     {
+        QJsonObject playerStateJsonObject;
+
         if (!m_clientsBySteamIdMap.contains(item.toString()))
+        {
+            playerStateJsonObject.insert("steam_id", item.toString());
+            playerStateJsonObject.insert("is_ranked", true);
+            playerStateJsonObject.insert("is_online", false);
+            playersStateJsonArray.append(playerStateJsonObject);
             continue;
+        }
 
         auto client = m_clientsBySteamIdMap[item.toString()];
 
-        QJsonObject playerStateJsonObject;
-
         playerStateJsonObject.insert("steam_id", client->steamId);
         playerStateJsonObject.insert("is_ranked", client->isRanked);
+        playerStateJsonObject.insert("is_online", true);
 
         playersStateJsonArray.append(playerStateJsonObject);
     }
@@ -162,7 +172,7 @@ void OnlineWebService::sendUniquePlayersOnlineStatisticResponse(QWebSocket *clie
     returnedDataJsonObject.insert("unique_players_online_statistic", uniquePlayersOnlineStatistic);
 
     QJsonObject messageObject;
-    messageObject.insert("op", PlyersStateResponse);
+    messageObject.insert("op", UniquePlayersOnlineStatisticResponse);
     messageObject.insert("data", returnedDataJsonObject);
 
     QJsonDocument message;
@@ -179,7 +189,7 @@ void OnlineWebService::sendModsOnlineCountResponse(QWebSocket *clientSocket, QJs
         return;
 
     QJsonObject messageObject;
-    messageObject.insert("op", PlyersStateResponse);
+    messageObject.insert("op", ModsOnlineCountResponse);
     messageObject.insert("data", m_modsOnlineCountJson);
 
     QJsonDocument message;
@@ -195,22 +205,27 @@ void OnlineWebService::updateModsOnlineCountJson()
     QJsonArray modsOnlineCount;
     int otherModsOnlineCount = 0;
 
+    for (auto it = m_modUiNames.cbegin(); it != m_modUiNames.cend(); ++it)
+    {
+        QJsonObject modObject;
+
+        modObject.insert("tech_name", it.value().techName);
+        modObject.insert("ui_name", it.value().uiName);
+        modObject.insert("order", it.value().order);
+
+        if (m_onlineModsCounterMap.contains(it.key()))
+            modObject.insert("online_count", m_onlineModsCounterMap[it.key()]);
+        else
+            modObject.insert("online_count", 0);
+
+        modsOnlineCount.append(std::move(modObject));
+    }
+
+
     for (auto it = m_onlineModsCounterMap.cbegin(); it != m_onlineModsCounterMap.cend(); ++it)
     {
-        auto& key = it.key();
-
-        if (m_modUiNames.contains(key))
-        {
-            QJsonObject modObject;
-
-            modObject.insert("tech_name", key);
-            modObject.insert("ui_name", m_modUiNames[key]);
-            modObject.insert("online_count", m_onlineModsCounterMap[key]);
-
-            modsOnlineCount.append(std::move(modObject));
-        }
-        else
-            otherModsOnlineCount += m_onlineModsCounterMap[key];
+        if (!m_modUiNames.contains(it.key()))
+            otherModsOnlineCount += m_onlineModsCounterMap[it.key()];
     }
 
     QJsonObject modObject;
@@ -218,9 +233,12 @@ void OnlineWebService::updateModsOnlineCountJson()
     modObject.insert("tech_name", "other_mods");
     modObject.insert("ui_name", "Other mods");
     modObject.insert("online_count", otherModsOnlineCount);
+    modObject.insert("order", m_modUiNames.count());
+
+    modsOnlineCount.append(std::move(modObject));
 
     QJsonObject returnedDataJsonObject;
-    returnedDataJsonObject.insert("mods_online_count_response", modsOnlineCount);
+    returnedDataJsonObject.insert("mods_online_count", modsOnlineCount);
 
     m_modsOnlineCountJson = returnedDataJsonObject;
 }
@@ -257,7 +275,13 @@ void OnlineWebService::loadModUiNames()
             continue;
 
         auto modObject = item.toObject();
-        m_modUiNames.insert(modObject.value("tech_name").toString(), modObject.value("ui_name").toString());
+
+        ModUiName newModUiName;
+        newModUiName.techName = modObject.value("tech_name").toString();
+        newModUiName.uiName = modObject.value("ui_name").toString();
+        newModUiName.order = modObject.value("order").toInt();
+
+        m_modUiNames.insert(newModUiName.techName, newModUiName);
     }
 }
 
@@ -334,7 +358,7 @@ void OnlineWebService::loadLastUniquePlayers()
     QString filePath = QCoreApplication::applicationDirPath() + "/UniquePlayers.json";
 
     QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
         qWarning() << "OnlineWebService::loadLastUniquePlayers() -- File not oppened:" << filePath;
         return;
     }
@@ -393,7 +417,7 @@ void OnlineWebService::onClientDisconnectd()
     QWebSocket *disconnectedClient = qobject_cast<QWebSocket *>(sender());
 
     if (disconnectedClient) {
-        m_onlineModsCounterMap["all_mods"]--;
+        //m_onlineModsCounterMap["all_mods"]--;
         m_onlineModsCounterMap[m_clientsMap[disconnectedClient].currentMod]--;
         updateModsOnlineCountJson();
 
@@ -446,15 +470,26 @@ void OnlineWebService::onClosed()
 
 void OnlineWebService::checkClientsPingTime()
 {
+    QList<QWebSocket*> clientsForClose;
+
     for(auto& item: m_clientsMap)
     {
         item.pingTime++;
 
         if (item.pingTime > 45)
         {
+            clientsForClose.append(item.webSocket);
+
             qDebug() << "PING TIMEOUT";
-            if (item.webSocket)
-                item.webSocket->close();
         }
     }
+
+    for (auto& item : clientsForClose)
+    {
+        if (m_clientsMap[item].webSocket)
+            m_clientsMap[item].webSocket->close();
+        else
+            m_clientsMap.remove(item);
+    }
+
 }

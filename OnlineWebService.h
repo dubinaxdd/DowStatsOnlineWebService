@@ -18,6 +18,12 @@ struct Client
     QString currentMod = "";
 };
 
+struct ModUiName{
+    QString techName = "";
+    QString uiName = "";
+    int order = 0;
+};
+
 
 class OnlineWebService : public QObject
 {
@@ -70,7 +76,7 @@ private:
     QMap<QString, QDateTime> m_lastYearPlayersOnlineMap;
     QMap<QString, QDateTime> m_allTimesPlayersOnlineMap;
 
-    QMap<QString, QString> m_modUiNames;
+    QMap<QString, ModUiName> m_modUiNames;
 
     QJsonObject m_modsOnlineCountJson;
     QTimer m_checkTimeTimer;
