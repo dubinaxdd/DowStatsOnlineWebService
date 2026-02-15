@@ -288,8 +288,8 @@ void OnlineWebService::updateLastUniquePlayers()
 {
     QDateTime curentDate = QDateTime::currentDateTimeUtc();
 
-    if (!(curentDate.time().hour() == 0 && curentDate.time().minute() == 0))
-        return;
+    //if (!(curentDate.time().hour() == 0 && curentDate.time().minute() == 0))
+    //    return;
 
     for (auto it = m_lastDayPlayersOnlineMap.begin(); it != m_lastDayPlayersOnlineMap.end();)
     {
@@ -333,7 +333,7 @@ void OnlineWebService::saveLastUniquePlayers()
         for (auto it = playersMap.begin(); it != playersMap.end(); ++it) {
             QJsonObject playerObj;
             playerObj.insert("steam_id", it.key());
-            playerObj.insert("date_time", it.value().toString());
+            playerObj.insert("date_time", it.value().toString(Qt::DateFormat::ISODate));
             array.append(playerObj);
         }
         return array;
@@ -388,7 +388,7 @@ void OnlineWebService::loadLastUniquePlayers()
         for(const auto &item : std::as_const(*playersArray))
         {
             auto itemObject = item.toObject();
-            playersMap->insert(itemObject.value("steam_id").toString(), QDateTime::fromString(itemObject.value("date_time").toString()));
+            playersMap->insert(itemObject.value("steam_id").toString(), QDateTime::fromString(itemObject.value("date_time").toString(), Qt::DateFormat::ISODate));
         }
     };
 
