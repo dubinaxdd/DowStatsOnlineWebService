@@ -69,7 +69,7 @@ void OnlineWebService::sendPingResponse(QWebSocket *clientSocket, QJsonObject *j
         if (!client.currentMod.isEmpty())
             m_onlineModsCounterMap[client.currentMod]--;
 
-        if (m_onlineModsCounterMap[client.currentMod] == 0)
+        if (m_onlineModsCounterMap[client.currentMod] <= 0)
             m_onlineModsCounterMap.remove(client.currentMod);
 
         client.currentMod = jsonDataObject.value("current_mod").toString();
@@ -420,7 +420,7 @@ void OnlineWebService::onClientDisconnectd()
 
         m_onlineModsCounterMap[currentMod]--;
 
-        if (m_onlineModsCounterMap[currentMod] == 0)
+        if (m_onlineModsCounterMap[currentMod] <= 0)
             m_onlineModsCounterMap.remove(currentMod);
 
         updateModsOnlineCountJson();
@@ -490,10 +490,19 @@ void OnlineWebService::checkClientsPingTime()
 
     for (auto& item : clientsForClose)
     {
-        if (m_clientsMap[item].webSocket)
-            m_clientsMap[item].webSocket->close();
+        auto& client = m_clientsMap[item];
+
+        if (client.webSocket)
+            client.webSocket->close();
         else
+        {
+            m_onlineModsCounterMap[client.currentMod]--;
+
+            if (m_onlineModsCounterMap[client.currentMod] <= 0)
+                m_onlineModsCounterMap.remove(client.currentMod);
+
             m_clientsMap.remove(item);
+        }
     }
 
 }
