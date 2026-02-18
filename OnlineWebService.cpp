@@ -286,31 +286,31 @@ void OnlineWebService::loadModUiNames()
 
 void OnlineWebService::updateLastUniquePlayers()
 {
-    QDateTime curentDate = QDateTime::currentDateTimeUtc();
+    QDateTime currentDate = QDateTime::currentDateTimeUtc();
 
-    if (!(curentDate.time().hour() == 0 && curentDate.time().minute() == 0))
+    if (!(currentDate.time().hour() == 0 && currentDate.time().minute() == 0))
         return;
 
     for (auto it = m_lastDayPlayersOnlineMap.begin(); it != m_lastDayPlayersOnlineMap.end();)
     {
-        if (curentDate.msecsTo(it.value()) > 86400000)
-            m_lastDayPlayersOnlineMap.erase(it);
+        if (it.value().addDays(1) < currentDate)
+            it = m_lastDayPlayersOnlineMap.erase(it);
         else
             it++;
     }
 
     for (auto it = m_lastMonthPlayersOnlineMap.begin(); it != m_lastMonthPlayersOnlineMap.end();)
     {
-        if (curentDate.msecsTo(it.value()) > 2678400000)
-            m_lastMonthPlayersOnlineMap.erase(it);
+        if (it.value().addMonths(1) < currentDate)
+            it = m_lastMonthPlayersOnlineMap.erase(it);
         else
             it++;
     }
 
     for (auto it = m_lastYearPlayersOnlineMap.begin(); it != m_lastYearPlayersOnlineMap.end();)
     {
-        if (curentDate.msecsTo(it.value()) > 31536000000)
-            m_lastYearPlayersOnlineMap.erase(it);
+        if (it.value().addYears(1) < currentDate)
+            it = m_lastYearPlayersOnlineMap.erase(it);
         else
             it++;
     }
