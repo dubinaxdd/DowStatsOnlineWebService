@@ -288,9 +288,6 @@ void OnlineWebService::updateLastUniquePlayers()
 {
     QDateTime currentDate = QDateTime::currentDateTimeUtc();
 
-    if (!(currentDate.time().hour() == 0 && currentDate.time().minute() == 0))
-        return;
-
     for (auto it = m_lastDayPlayersOnlineMap.begin(); it != m_lastDayPlayersOnlineMap.end();)
     {
         if (it.value().addDays(1) < currentDate)
@@ -314,6 +311,9 @@ void OnlineWebService::updateLastUniquePlayers()
         else
             it++;
     }
+
+    if (!(currentDate.time().hour() == 0 && currentDate.time().minute() == 0))
+        return;
 
     saveLastUniquePlayers();
 }
