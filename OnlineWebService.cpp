@@ -410,7 +410,7 @@ void OnlineWebService::onNewConnection()
     qDebug() << "CLIENT CONNECTED";
 }
 
-void OnlineWebService::onClientDisconnectd()
+/*void OnlineWebService::onClientDisconnectd()
 {
     qDebug() << "ON DISCONNECTED";
     QWebSocket *disconnectedClient = qobject_cast<QWebSocket *>(sender());
@@ -434,7 +434,58 @@ void OnlineWebService::onClientDisconnectd()
 
         qDebug() << "CLIENT DISCONNECTED";
     }
+}*/
+
+void OnlineWebService::onClientDisconnectd()
+{
+    qDebug() << "ON DISCONNECTED";
+
+    QWebSocket *disconnectedClient =
+        qobject_cast<QWebSocket *>(sender());
+
+    if (!disconnectedClient)
+        return;
+
+    auto clientIt = m_clientsMap.find(disconnectedClient);
+
+    if (clientIt == m_clientsMap.end())
+        return;
+
+    QString steamId = clientIt->steamId;
+    QString currentMod = clientIt->currentMod;
+
+    // Удаляем Steam ID только если он всё ещё указывает
+    // именно на это соединение.
+    auto steamIt = m_clientsBySteamIdMap.find(steamId);
+
+    if (steamIt != m_clientsBySteamIdMap.end() &&
+        steamIt.value() == &clientIt.value())
+    {
+        m_clientsBySteamIdMap.erase(steamIt);
+    }
+
+    if (!currentMod.isEmpty())
+    {
+        auto modIt = m_onlineModsCounterMap.find(currentMod);
+
+        if (modIt != m_onlineModsCounterMap.end())
+        {
+            (*modIt)--;
+
+            if (*modIt <= 0)
+                m_onlineModsCounterMap.erase(modIt);
+        }
+    }
+
+    updateModsOnlineCountJson();
+
+    disconnectedClient->deleteLater();
+    m_clientsMap.erase(clientIt);
+
+    qDebug() << "CLIENT DISCONNECTED";
 }
+
+
 
 void OnlineWebService::onMessageReceived(const QString &message)
 {
